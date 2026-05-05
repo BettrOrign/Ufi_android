@@ -1,0 +1,19 @@
+buildscript {
+    ext.kotlin_version = '1.9.10'
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+rootProject.tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
