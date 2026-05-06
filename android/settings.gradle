@@ -1,3 +1,7 @@
+plugins {
+    id "dev.flutter.flutter-gradle-plugin" version "1.0.0"
+}
+
 include ':app'
 
 def localPropertiesFile = new File(rootDir, 'local.properties')
@@ -9,4 +13,3 @@ if (localPropertiesFile.exists()) {
 
 def flutterSdkPath = properties.getProperty('flutter.sdk')
 assert flutterSdkPath != null, 'flutter.sdk not set in local.properties'
-apply from: "$flutterSdkPath/packages/flutter_tools/gradle/flutter.gradle"
