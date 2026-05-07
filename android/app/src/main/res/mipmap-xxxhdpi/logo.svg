@@ -1,0 +1,50 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1020"></stop>
+      <stop offset="1" stop-color="#111827"></stop>
+    </linearGradient>
+
+    <linearGradient id="main" x1="150" y1="120" x2="360" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"></stop>
+      <stop offset="1" stop-color="#8B5CF6"></stop>
+    </linearGradient>
+
+    <linearGradient id="accent" x1="180" y1="160" x2="340" y2="340" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9"></stop>
+      <stop offset="1" stop-color="#A78BFA"></stop>
+    </linearGradient>
+
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur"></feGaussianBlur>
+      <feMerge>
+        <feMergeNode in="blur"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect x="32" y="32" width="448" height="448" rx="120" fill="url(#bg)"></rect>
+
+  <!-- Orbit Ring -->
+  <circle cx="256" cy="256" r="150" stroke="url(#main)" stroke-width="10" stroke-dasharray="20 16" opacity="0.85"></circle>
+
+  <!-- Autonomous Nodes -->
+  <circle cx="256" cy="106" r="12" fill="#67E8F9"></circle>
+  <circle cx="388" cy="332" r="10" fill="#8B5CF6"></circle>
+  <circle cx="124" cy="332" r="10" fill="#38BDF8"></circle>
+
+  <!-- Central U -->
+  <path d="M176 170V282C176 336 210 370 256 370C302 370 336 336 336 282V170" stroke="url(#accent)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"></path>
+
+  <!-- Agent Core -->
+  <circle cx="256" cy="248" r="32" fill="url(#main)" filter="url(#glow)"></circle>
+
+  <!-- Neural Connection Lines -->
+  <path d="M256 138V186" stroke="#67E8F9" stroke-width="6" stroke-linecap="round" opacity="0.9"></path>
+
+  <path d="M149 317L196 290" stroke="#38BDF8" stroke-width="6" stroke-linecap="round" opacity="0.9"></path>
+
+  <path d="M363 317L316 290" stroke="#A78BFA" stroke-width="6" stroke-linecap="round" opacity="0.9"></path>
+</svg>
