@@ -1,17 +1,36 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_message.dart';
 
 class LLMService extends ChangeNotifier {
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   String? _error;
-
-  // API Key and Model - replace with your actual values or use env
-  final String _apiKey = const String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
+  String _apiKey = '';
+  
   final String _model = 'qwen/qwen3-32b';
   final String _apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+
+  LLMService() {
+    _loadApiKey();
+  }
+
+  Future<void> _loadApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    _apiKey = prefs.getString('groq_api_key') ?? '';
+    notifyListeners();
+  }
+
+  Future<void> setApiKey(String key) async {
+    _apiKey = key;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('groq_api_key', key);
+    notifyListeners();
+  }
+
+  String get apiKey => _apiKey;
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
   bool get isLoading => _isLoading;

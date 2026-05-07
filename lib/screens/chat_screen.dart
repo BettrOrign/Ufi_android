@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/llm_service.dart';
 import '../models/chat_message.dart';
+import './settings_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -65,11 +66,17 @@ class _ChatScreenState extends State<ChatScreen> {
           style: TextStyle(
             fontWeight: FontWeight.w900,
             fontFamily: 'JetBrainsMono',
-            color: colorScheme.primary, // Твой Aqua акцент
+            color: colorScheme.primary,
             letterSpacing: 2.0,
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
             onPressed: () => context.read<LLMService>().clearMessages(),
@@ -78,7 +85,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Stack(
         children: [
-          // Фоновый градиент для глубины
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -98,6 +104,81 @@ class _ChatScreenState extends State<ChatScreen> {
               Expanded(
                 child: Consumer<LLMService>(
                   builder: (context, service, _) {
+                    // Show error message if API key is not configured
+                    if (service.apiKey.isEmpty && service.messages.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.key_outlined, 
+                              size: 48, 
+                              color: colorScheme.primary.withOpacity(0.5)),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Configure API Key',
+                              style: TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Tap the settings icon to add your Groq API key',
+                              style: TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                              ),
+                              icon: const Icon(Icons.settings),
+                              label: const Text('Open Settings'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    
+                    // Show error from API
+                    if (service.error != null && service.error!.isNotEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, 
+                              size: 48, 
+                              color: colorScheme.error.withOpacity(0.7)),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error',
+                              style: TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.error,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Text(
+                                service.error!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontFamily: 'JetBrainsMono',
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
                     if (service.messages.isEmpty) {
                       return const Center(
                         child: Text(
@@ -106,6 +187,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       );
                     }
+                    
                     return ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(16, 110, 16, 16),
