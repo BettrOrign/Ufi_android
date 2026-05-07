@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/llm_service.dart';
@@ -36,7 +37,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
+          curve: Curves.easeOutQuart,
         );
       }
     });
@@ -44,66 +45,83 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Ufi Agent'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: colorScheme.surface.withOpacity(0.7),
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
+        title: Text(
+          'UFI AGENT',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontFamily: 'JetBrainsMono',
+            color: colorScheme.primary, // Твой Aqua акцент
+            letterSpacing: 2.0,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () {
-              context.read<LLMService>().clearMessages();
-            },
+            icon: const Icon(Icons.delete_sweep_outlined),
+            onPressed: () => context.read<LLMService>().clearMessages(),
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: Consumer<LLMService>(
-              builder: (context, service, _) {
-                if (service.messages.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'Send a message to start the conversation',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: service.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = service.messages[index];
-                    return _MessageBubble(message: message);
-                  },
-                );
-              },
+          // Фоновый градиент для глубины
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    colorScheme.primary.withOpacity(0.05),
+                    colorScheme.surface,
+                  ],
+                ),
+              ),
             ),
           ),
-          Consumer<LLMService>(
-            builder: (context, service, _) {
-              if (service.error != null) {
-                return Container(
-                  padding: const EdgeInsets.all(8),
-                  color: Colors.red[100],
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: Colors.red[700]),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(service.error!)),
-                    ],
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-          _InputBar(
-            controller: _controller,
-            onSend: () => _sendMessage(context.read<LLMService>()),
+          Column(
+            children: [
+              Expanded(
+                child: Consumer<LLMService>(
+                  builder: (context, service, _) {
+                    if (service.messages.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'Waiting for command...',
+                          style: TextStyle(fontFamily: 'JetBrainsMono', color: Colors.grey),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 110, 16, 16),
+                      itemCount: service.messages.length,
+                      itemBuilder: (context, index) => _MessageBubble(
+                        message: service.messages[index],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              _InputBar(
+                controller: _controller,
+                onSend: () => _sendMessage(context.read<LLMService>()),
+              ),
+            ],
           ),
         ],
       ),
@@ -113,38 +131,42 @@ class _ChatScreenState extends State<ChatScreen> {
 
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
-
   const _MessageBubble({required this.message});
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
+    final theme = Theme.of(context);
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+          maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
         decoration: BoxDecoration(
-          color: isUser
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.secondaryContainer,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isUser ? 16 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 16),
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isUser ? 20 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 20),
           ),
+          gradient: isUser
+              ? LinearGradient(
+                  colors: [theme.colorScheme.primary, theme.colorScheme.primaryContainer],
+                )
+              : null,
+          color: isUser ? null : theme.colorScheme.secondaryContainer.withOpacity(0.8),
         ),
         child: Text(
           message.content,
           style: TextStyle(
-            color: isUser
-                ? Theme.of(context).colorScheme.onPrimary
-                : Theme.of(context).colorScheme.onSecondaryContainer,
+            fontFamily: 'JetBrainsMono',
+            fontSize: 14,
+            fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
+            color: isUser ? theme.colorScheme.onPrimary : theme.colorScheme.onSecondaryContainer,
           ),
         ),
       ),
@@ -156,60 +178,43 @@ class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
 
-  const _InputBar({
-    required this.controller,
-    required this.onSend,
-  });
+  const _InputBar({required this.controller, required this.onSend});
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).dividerColor,
-          ),
-        ),
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: colorScheme.secondaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
+              ),
               child: TextField(
                 controller: controller,
-                decoration: InputDecoration(
-                  hintText: 'Type a message...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
+                style: const TextStyle(fontFamily: 'JetBrainsMono'),
+                decoration: const InputDecoration(
+                  hintText: '> system_input',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
-                textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
               ),
             ),
-            const SizedBox(width: 8),
-            Consumer<LLMService>(
-              builder: (context, service, _) {
-                return IconButton.filled(
-                  onPressed: service.isLoading ? null : onSend,
-                  icon: service.isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send),
-                );
-              },
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton.small(
+            onPressed: onSend,
+            elevation: 0,
+            backgroundColor: colorScheme.primary,
+            child: Icon(Icons.bolt, color: colorScheme.onPrimary),
+          ),
+        ],
       ),
     );
   }
