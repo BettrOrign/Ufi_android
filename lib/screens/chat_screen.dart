@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/llm_service.dart';
 import '../models/chat_message.dart';
+import '../widgets/expandable_toolbar.dart';
 import './settings_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -42,6 +43,15 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     });
+  }
+
+  void _showFeatureSnackBar(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature coming soon...'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -104,15 +114,16 @@ class _ChatScreenState extends State<ChatScreen> {
               Expanded(
                 child: Consumer<LLMService>(
                   builder: (context, service, _) {
-                    // Show error message if API key is not configured
                     if (service.apiKey.isEmpty && service.messages.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.key_outlined, 
-                              size: 48, 
-                              color: colorScheme.primary.withOpacity(0.5)),
+                            Icon(
+                              Icons.key_outlined,
+                              size: 48,
+                              color: colorScheme.primary.withOpacity(0.5),
+                            ),
                             const SizedBox(height: 16),
                             const Text(
                               'Configure API Key',
@@ -133,7 +144,9 @@ class _ChatScreenState extends State<ChatScreen> {
                             const SizedBox(height: 24),
                             ElevatedButton.icon(
                               onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
                               ),
                               icon: const Icon(Icons.settings),
                               label: const Text('Open Settings'),
@@ -142,16 +155,17 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       );
                     }
-                    
-                    // Show error from API
+
                     if (service.error != null && service.error!.isNotEmpty) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error_outline, 
-                              size: 48, 
-                              color: colorScheme.error.withOpacity(0.7)),
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: colorScheme.error.withOpacity(0.7),
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               'Error',
@@ -164,7 +178,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             const SizedBox(height: 8),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
                               child: Text(
                                 service.error!,
                                 textAlign: TextAlign.center,
@@ -183,11 +198,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       return const Center(
                         child: Text(
                           'Waiting for command...',
-                          style: TextStyle(fontFamily: 'JetBrainsMono', color: Colors.grey),
+                          style: TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            color: Colors.grey,
+                          ),
                         ),
                       );
                     }
-                    
+
                     return ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(16, 110, 16, 16),
@@ -199,9 +217,31 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                 ),
               ),
-              _InputBar(
+              ExpandableInputBar(
                 controller: _controller,
                 onSend: () => _sendMessage(context.read<LLMService>()),
+                tools: [
+                  ToolbarTool(
+                    icon: Icons.mic,
+                    label: 'Voice',
+                    onTap: () => _showFeatureSnackBar('Voice'),
+                  ),
+                  ToolbarTool(
+                    icon: Icons.image,
+                    label: 'Photo',
+                    onTap: () => _showFeatureSnackBar('Photo'),
+                  ),
+                  ToolbarTool(
+                    icon: Icons.attach_file,
+                    label: 'File',
+                    onTap: () => _showFeatureSnackBar('File'),
+                  ),
+                  ToolbarTool(
+                    icon: Icons.delete_outline,
+                    label: 'Clear',
+                    onTap: () => context.read<LLMService>().clearMessages(),
+                  ),
+                ],
               ),
             ],
           ),
@@ -213,6 +253,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
+
   const _MessageBubble({required this.message});
 
   @override
@@ -237,10 +278,15 @@ class _MessageBubble extends StatelessWidget {
           ),
           gradient: isUser
               ? LinearGradient(
-                  colors: [theme.colorScheme.primary, theme.colorScheme.primaryContainer],
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primaryContainer,
+                  ],
                 )
               : null,
-          color: isUser ? null : theme.colorScheme.secondaryContainer.withOpacity(0.8),
+          color: isUser
+              ? null
+              : theme.colorScheme.secondaryContainer.withOpacity(0.8),
         ),
         child: Text(
           message.content,
@@ -248,55 +294,11 @@ class _MessageBubble extends StatelessWidget {
             fontFamily: 'JetBrainsMono',
             fontSize: 14,
             fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
-            color: isUser ? theme.colorScheme.onPrimary : theme.colorScheme.onSecondaryContainer,
+            color: isUser
+                ? theme.colorScheme.onPrimary
+                : theme.colorScheme.onSecondaryContainer,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _InputBar extends StatelessWidget {
-  final TextEditingController controller;
-  final VoidCallback onSend;
-
-  const _InputBar({required this.controller, required this.onSend});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: colorScheme.secondaryContainer.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
-              ),
-              child: TextField(
-                controller: controller,
-                style: const TextStyle(fontFamily: 'JetBrainsMono'),
-                decoration: const InputDecoration(
-                  hintText: '> system_input',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-                onSubmitted: (_) => onSend(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          FloatingActionButton.small(
-            onPressed: onSend,
-            elevation: 0,
-            backgroundColor: colorScheme.primary,
-            child: Icon(Icons.bolt, color: colorScheme.onPrimary),
-          ),
-        ],
       ),
     );
   }
