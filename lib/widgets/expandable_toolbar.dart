@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/audio_recorder_service.dart';
 
-/// A single tool button in the expandable toolbar.
 class ToolbarTool {
   final IconData icon;
   final String label;
@@ -15,7 +16,6 @@ class ToolbarTool {
   });
 }
 
-/// Reusable expandable input bar with tool buttons.
 class ExpandableInputBar extends StatefulWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
@@ -61,6 +61,36 @@ class _ExpandableInputBarState extends State<ExpandableInputBar> {
     widget.onExpandedChanged?.call(newState);
   }
 
+  void _handleMicTap(BuildContext context) {
+    final recorder = context.read<AudioRecorderService>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (recorder.isRecording) {
+      recorder.stopRecording().then((path) {
+        if (path != null) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Recording saved: $path'),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    } else {
+      recorder.startRecording().then((success) {
+        if (!success) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Failed to start recording. Check microphone permission.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -68,6 +98,7 @@ class _ExpandableInputBarState extends State<ExpandableInputBar> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        const _RecordingIndicator(),
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
@@ -139,15 +170,71 @@ class _ExpandableInputBarState extends State<ExpandableInputBar> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: widget.tools.map((tool) {
-          return _ToolButton(
-            icon: tool.icon,
-            label: tool.label,
-            color: tool.color ?? colorScheme.primary,
-            onTap: tool.onTap,
-          );
-        }).toList(),
+        children: [
+          ...widget.tools.map((tool) {
+            return _ToolButton(
+              icon: tool.icon,
+              label: tool.label,
+              color: tool.color ?? colorScheme.primary,
+              onTap: tool.onTap,
+            );
+          }),
+          Consumer<AudioRecorderService>(
+            builder: (context, recorder, _) {
+              final isRecording = recorder.isRecording;
+              return _ToolButton(
+                icon: isRecording ? Icons.stop_circle : Icons.mic,
+                label: isRecording ? 'Stop' : 'Voice',
+                color: isRecording ? Colors.red : colorScheme.primary,
+                onTap: () => _handleMicTap(context),
+              );
+            },
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _RecordingIndicator extends StatelessWidget {
+  const _RecordingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AudioRecorderService>(
+      builder: (context, recorder, _) {
+        if (!recorder.isRecording) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Recording ${recorder.formatDuration(recorder.recordDuration)}',
+                style: const TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

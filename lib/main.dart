@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/llm_service.dart';
+import 'services/audio_recorder_service.dart';
 import 'screens/chat_screen.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => LLMService(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => LLMService()),
+        ChangeNotifierProvider(create: (_) => AudioRecorderService()),
+      ],
       child: const UfiAgentApp(),
     ),
   );
