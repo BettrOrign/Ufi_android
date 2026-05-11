@@ -1,4 +1,3 @@
-APk/android/app/src/main/kotlin/com/ufi/agent/MainActivity.kt
 package com.ufi.agent
 
 import android.Manifest
