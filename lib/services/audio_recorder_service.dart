@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:record/record.dart';
 
 enum RecorderState {
   idle,
@@ -12,11 +9,11 @@ enum RecorderState {
 }
 
 class AudioRecorderService extends ChangeNotifier {
-  final AudioRecorder _recorder = AudioRecorder();
+  static const _channel = MethodChannel('com.ufi.agent/audio_recorder');
+
   RecorderState _state = RecorderState.idle;
   String? _currentFilePath;
   Duration _recordDuration = Duration.zero;
-  Timer? _durationTimer;
 
   RecorderState get state => _state;
   bool get isRecording => _state == RecorderState.recording;
@@ -25,58 +22,64 @@ class AudioRecorderService extends ChangeNotifier {
   Duration get recordDuration => _recordDuration;
   String? get currentFilePath => _currentFilePath;
 
-  Future<bool> _requestPermission() async {
-    final status = await Permission.microphone.request();
-    return status.isGranted;
+  AudioRecorderService() {
+    _channel.setMethodCallHandler(_handleMethodCall);
   }
 
-  Future<bool> _checkPermission() async {
-    return await Permission.microphone.isGranted;
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'onDurationChanged':
+        final duration = call.arguments as int?;
+        if (duration != null) {
+          _recordDuration = Duration(milliseconds: duration);
+          notifyListeners();
+        }
+        break;
+    }
+  }
+
+  Future<bool> checkPermission() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('checkPermission');
+      return result ?? false;
+    } catch (e) {
+      debugPrint('Error checking permission: $e');
+      return false;
+    }
+  }
+
+  Future<void> requestPermission() async {
+    try {
+      await _channel.invokeMethod('requestPermission');
+    } catch (e) {
+      debugPrint('Error requesting permission: $e');
+    }
   }
 
   Future<bool> startRecording() async {
     try {
-      // Check/request permission
-      if (!await _checkPermission()) {
-        if (!await _requestPermission()) {
+      if (!await checkPermission()) {
+        await requestPermission();
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (!await checkPermission()) {
           debugPrint('Microphone permission denied');
           return false;
         }
       }
 
-      // Check if recorder is available
-      if (!await _recorder.hasPermission()) {
-        debugPrint('Recorder permission denied');
-        return false;
-      }
-
-      // Stop any existing recording
       if (_state != RecorderState.idle) {
         await stopRecording();
       }
 
-      // Generate file path
-      final directory = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _currentFilePath = '${directory.path}/recording_$timestamp.m4a';
-
-      // Configure and start recording
-      await _recorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 128000,
-          sampleRate: 44100,
-        ),
-        path: _currentFilePath!,
-      );
-
-      _state = RecorderState.recording;
-      _recordDuration = Duration.zero;
-      _startDurationTimer();
-      notifyListeners();
-
-      debugPrint('Recording started: $_currentFilePath');
-      return true;
+      final result = await _channel.invokeMethod<bool>('startRecording');
+      if (result == true) {
+        _state = RecorderState.recording;
+        _recordDuration = Duration.zero;
+        notifyListeners();
+        debugPrint('Recording started');
+        return true;
+      }
+      return false;
     } catch (e) {
       debugPrint('Error starting recording: $e');
       _state = RecorderState.idle;
@@ -87,14 +90,13 @@ class AudioRecorderService extends ChangeNotifier {
 
   Future<String?> stopRecording() async {
     try {
-      _stopDurationTimer();
-
       if (_state == RecorderState.idle) {
         return null;
       }
 
-      final path = await _recorder.stop();
+      final path = await _channel.invokeMethod<String>('stopRecording');
       _state = RecorderState.idle;
+      _currentFilePath = path;
       notifyListeners();
 
       debugPrint('Recording stopped: $path');
@@ -110,9 +112,7 @@ class AudioRecorderService extends ChangeNotifier {
   Future<void> pauseRecording() async {
     try {
       if (_state != RecorderState.recording) return;
-
-      await _recorder.pause();
-      _stopDurationTimer();
+      await _channel.invokeMethod('pauseRecording');
       _state = RecorderState.paused;
       notifyListeners();
       debugPrint('Recording paused');
@@ -124,9 +124,7 @@ class AudioRecorderService extends ChangeNotifier {
   Future<void> resumeRecording() async {
     try {
       if (_state != RecorderState.paused) return;
-
-      await _recorder.resume();
-      _startDurationTimer();
+      await _channel.invokeMethod('resumeRecording');
       _state = RecorderState.recording;
       notifyListeners();
       debugPrint('Recording resumed');
@@ -137,39 +135,17 @@ class AudioRecorderService extends ChangeNotifier {
 
   Future<void> cancelRecording() async {
     try {
-      _stopDurationTimer();
-      await _recorder.cancel();
+      await _channel.invokeMethod('cancelRecording');
       _state = RecorderState.idle;
-
-      // Delete the file if it exists
-      if (_currentFilePath != null) {
-        final file = File(_currentFilePath!);
-        if (await file.exists()) {
-          await file.delete();
-          debugPrint('Recording cancelled and file deleted');
-        }
-      }
-
       _currentFilePath = null;
       _recordDuration = Duration.zero;
       notifyListeners();
+      debugPrint('Recording cancelled');
     } catch (e) {
       debugPrint('Error cancelling recording: $e');
       _state = RecorderState.idle;
       notifyListeners();
     }
-  }
-
-  void _startDurationTimer() {
-    _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _recordDuration += const Duration(seconds: 1);
-      notifyListeners();
-    });
-  }
-
-  void _stopDurationTimer() {
-    _durationTimer?.cancel();
-    _durationTimer = null;
   }
 
   String formatDuration(Duration duration) {
@@ -184,9 +160,8 @@ class AudioRecorderService extends ChangeNotifier {
   }
 
   @override
-  Future<void> dispose() async {
-    _stopDurationTimer();
-    await _recorder.dispose();
+  void dispose() {
+    _channel.setMethodCallHandler(null);
     super.dispose();
   }
 }
