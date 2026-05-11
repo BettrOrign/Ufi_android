@@ -195,11 +195,12 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun startRecorderUpdates() {
-        val channel = MethodChannel(flutterEngine!!.dartExecutor.binaryMessenger, RECORDER_CHANNEL)
+        val engine = flutterEngine!!
         recorderRunnable = object : Runnable {
             override fun run() {
                 if (isRecording && !isPaused) {
-                    channel.invokeMethod("onDurationChanged", getRecordDuration().toInt())
+                    MethodChannel(engine.dartExecutor.binaryMessenger, RECORDER_CHANNEL)
+                        .invokeMethod("onDurationChanged", getRecordDuration().toInt())
                     handler.postDelayed(this, 1000)
                 }
             }
@@ -215,6 +216,7 @@ class MainActivity : FlutterActivity() {
         try {
             if (mediaPlayer != null && currentPlayerPath != path) stopAudio()
             if (mediaPlayer == null) mediaPlayer = MediaPlayer()
+            val engine = flutterEngine!!
             mediaPlayer?.apply {
                 setDataSource(path)
                 prepare()
@@ -225,10 +227,8 @@ class MainActivity : FlutterActivity() {
                 setOnCompletionListener {
                     isPlaying = false
                     stopPlayerUpdates()
-                    MethodChannel(
-                        flutterEngine!!.dartExecutor.binaryMessenger,
-                        PLAYER_CHANNEL
-                    ).invokeMethod("onComplete", null)
+                    MethodChannel(engine.dartExecutor.binaryMessenger, PLAYER_CHANNEL)
+                        .invokeMethod("onComplete", null)
                 }
             }
             return true
@@ -287,12 +287,13 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun startPlayerUpdates() {
-        val channel = MethodChannel(flutterEngine!!.dartExecutor.binaryMessenger, PLAYER_CHANNEL)
+        val engine = flutterEngine!!
         playerRunnable = object : Runnable {
             override fun run() {
                 if (isPlaying) {
-                    channel.invokeMethod("onPositionChanged", getPlayerPosition())
-                    channel.invokeMethod("onDurationChanged", getAudioDuration())
+                    MethodChannel(engine.dartExecutor.binaryMessenger, PLAYER_CHANNEL)
+                        .invokeMethod("onPositionChanged", getPlayerPosition())
+                        .invokeMethod("onDurationChanged", getAudioDuration())
                     handler.postDelayed(this, 500)
                 }
             }
