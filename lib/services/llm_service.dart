@@ -9,7 +9,7 @@ class LLMService extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   String _apiKey = '';
-  
+
   final String _model = 'qwen/qwen3-32b';
   final String _apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -52,10 +52,12 @@ class LLMService extends ChangeNotifier {
 
     try {
       // Build messages list for API
-      final messagesPayload = _messages.map((m) => {
-        'role': m.role,
-        'content': m.content,
-      }).toList();
+      final messagesPayload = _messages
+          .map((m) => {
+                'role': m.role,
+                'content': m.content,
+              })
+          .toList();
 
       final response = await http.post(
         Uri.parse(_apiUrl),
@@ -71,8 +73,10 @@ class LLMService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final assistantMessage = data['choices'][0]['message']['content'] as String;
-        _messages.add(ChatMessage(role: 'assistant', content: assistantMessage));
+        final assistantMessage =
+            data['choices'][0]['message']['content'] as String;
+        _messages
+            .add(ChatMessage(role: 'assistant', content: assistantMessage));
       } else {
         _error = 'API Error: ${response.statusCode}';
       }
@@ -82,6 +86,12 @@ class LLMService extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void addAudioMessage(String audioPath) {
+    _messages.add(ChatMessage(
+        role: 'user', content: '🎤 Voice message', audioPath: audioPath));
+    notifyListeners();
   }
 
   void clearMessages() {

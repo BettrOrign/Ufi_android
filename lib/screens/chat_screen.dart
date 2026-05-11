@@ -1,7 +1,10 @@
 import 'dart:ui';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/llm_service.dart';
+import '../services/audio_recorder_service.dart';
+import '../services/audio_player_service.dart';
 import '../models/chat_message.dart';
 import '../widgets/expandable_toolbar.dart';
 import './settings_screen.dart';
@@ -52,6 +55,38 @@ class _ChatScreenState extends State<ChatScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  void _handleMicTap(BuildContext context) {
+    final recorder = context.read<AudioRecorderService>();
+    final llmService = context.read<LLMService>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (recorder.isRecording) {
+      recorder.stopRecording().then((path) {
+        if (path != null) {
+          llmService.addAudioMessage(path);
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Recording added to chat'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      });
+    } else {
+      recorder.startRecording().then((success) {
+        if (!success) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Failed to start recording. Check microphone permission.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -224,7 +259,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ToolbarTool(
                     icon: Icons.mic,
                     label: 'Voice',
-                    onTap: () => _showFeatureSnackBar('Voice'),
+                    onTap: () => _handleMicTap(context),
                   ),
                   ToolbarTool(
                     icon: Icons.image,
@@ -288,18 +323,140 @@ class _MessageBubble extends StatelessWidget {
               ? null
               : theme.colorScheme.secondaryContainer.withOpacity(0.8),
         ),
-        child: Text(
-          message.content,
-          style: TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontSize: 14,
-            fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
-            color: isUser
-                ? theme.colorScheme.onPrimary
-                : theme.colorScheme.onSecondaryContainer,
-          ),
-        ),
+        child: message.hasAudio
+            ? _AudioPlayerWidget(audioPath: message.audioPath!)
+            : Text(
+                message.content,
+                style: TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontSize: 14,
+                  fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
+                  color: isUser
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSecondaryContainer,
+                ),
+              ),
       ),
     );
+  }
+}
+
+class _AudioPlayerWidget extends StatelessWidget {
+  final String audioPath;
+
+  const _AudioPlayerWidget({required this.audioPath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AudioPlayerService>(
+      builder: (context, player, _) {
+        final isPlaying = player.isPlaying && player.currentPath == audioPath;
+        final position = isPlaying ? player.position : Duration.zero;
+        final duration = isPlaying ? player.duration : Duration.zero;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    isPlaying ? Icons.pause_circle : Icons.play_circle,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 40,
+                  ),
+                  onPressed: () {
+                    if (isPlaying) {
+                      player.pause();
+                    } else if (player.currentPath == audioPath &&
+                        player.isPaused) {
+                      player.resume();
+                    } else {
+                      player.play(audioPath);
+                    }
+                  },
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isPlaying || player.currentPath == audioPath) ...[
+                        SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 4,
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 6),
+                            overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 12),
+                          ),
+                          child: Slider(
+                            value: duration.inMilliseconds > 0
+                                ? position.inMilliseconds /
+                                    duration.inMilliseconds
+                                : 0,
+                            onChanged: (value) {
+                              final newPosition = Duration(
+                                milliseconds:
+                                    (value * duration.inMilliseconds).round(),
+                              );
+                              player.seek(newPosition);
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            '${_formatDuration(position)} / ${_formatDuration(duration)}',
+                            style: TextStyle(
+                              fontFamily: 'JetBrainsMono',
+                              fontSize: 10,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSecondaryContainer,
+                            ),
+                          ),
+                        ),
+                      ] else
+                        const Text(
+                          'Audio message',
+                          style: TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: Theme.of(context).colorScheme.error,
+                    size: 24,
+                  ),
+                  onPressed: () {
+                    if (player.currentPath == audioPath) {
+                      player.stop();
+                    }
+                    File(audioPath).deleteSync();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Recording deleted'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    return '${twoDigits(d.inMinutes.remainder(60))}:${twoDigits(d.inSeconds.remainder(60))}';
   }
 }

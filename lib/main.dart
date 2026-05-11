@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/llm_service.dart';
 import 'services/audio_recorder_service.dart';
+import 'services/audio_player_service.dart';
 import 'screens/chat_screen.dart';
 
 void main() {
@@ -10,6 +11,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => LLMService()),
         ChangeNotifierProvider(create: (_) => AudioRecorderService()),
+        ChangeNotifierProvider(create: (_) => AudioPlayerService()),
       ],
       child: const UfiAgentApp(),
     ),
