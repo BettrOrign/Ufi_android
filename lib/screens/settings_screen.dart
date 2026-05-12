@@ -131,6 +131,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                if (_apiKeyController.text.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: Colors.green.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'API key is configured',
+                          style: TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontSize: 11,
+                            color: Colors.green.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Container(
                   decoration: BoxDecoration(
                     color: colorScheme.secondaryContainer.withOpacity(0.5),
@@ -143,6 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     controller: _apiKeyController,
                     obscureText: true,
                     style: const TextStyle(fontFamily: 'JetBrainsMono'),
+                    onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: 'gsk_...',
                       hintStyle: TextStyle(

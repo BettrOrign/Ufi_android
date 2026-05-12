@@ -61,36 +61,6 @@ class _ExpandableInputBarState extends State<ExpandableInputBar> {
     widget.onExpandedChanged?.call(newState);
   }
 
-  void _handleMicTap(BuildContext context) {
-    final recorder = context.read<AudioRecorderService>();
-    final messenger = ScaffoldMessenger.of(context);
-
-    if (recorder.isRecording) {
-      recorder.stopRecording().then((path) {
-        if (path != null) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text('Recording saved: $path'),
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      });
-    } else {
-      recorder.startRecording().then((success) {
-        if (!success) {
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'Failed to start recording. Check microphone permission.'),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -179,17 +149,6 @@ class _ExpandableInputBarState extends State<ExpandableInputBar> {
               onTap: tool.onTap,
             );
           }),
-          Consumer<AudioRecorderService>(
-            builder: (context, recorder, _) {
-              final isRecording = recorder.isRecording;
-              return _ToolButton(
-                icon: isRecording ? Icons.stop_circle : Icons.mic,
-                label: isRecording ? 'Stop' : 'Voice',
-                color: isRecording ? Colors.red : colorScheme.primary,
-                onTap: () => _handleMicTap(context),
-              );
-            },
-          ),
         ],
       ),
     );
@@ -287,7 +246,7 @@ class _ToggleButton extends StatelessWidget {
   }
 }
 
-class _ToolButton extends StatelessWidget {
+class _ToolButton extends StatefulWidget {
   final IconData icon;
   final String label;
   final Color color;
@@ -301,26 +260,66 @@ class _ToolButton extends StatelessWidget {
   });
 
   @override
+  State<_ToolButton> createState() => _ToolButtonState();
+}
+
+class _ToolButtonState extends State<_ToolButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Tooltip(
-      message: label,
+      message: widget.label,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            _controller.forward().then((_) {
+              _controller.reverse();
+            });
+            widget.onTap();
+          },
+          onHover: (hovering) {
+            if (hovering) {
+              _controller.forward();
+            } else {
+              _controller.reverse();
+            }
+          },
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: colorScheme.secondaryContainer.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colorScheme.outlineVariant.withOpacity(0.3),
-              ),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 1.0, end: 1.1).animate(
+              CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colorScheme.secondaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withOpacity(0.3),
+                ),
+              ),
+              child: Icon(widget.icon, color: widget.color, size: 24),
+            ),
           ),
         ),
       ),

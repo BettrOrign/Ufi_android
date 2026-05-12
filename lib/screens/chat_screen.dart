@@ -230,13 +230,24 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
 
                     if (service.messages.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'Waiting for command...',
-                          style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            color: Colors.grey,
-                          ),
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              size: 48,
+                              color: colorScheme.primary.withOpacity(0.3),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Waiting for command...',
+                              style: TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     }
@@ -286,56 +297,122 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class _MessageBubble extends StatelessWidget {
+class _MessageBubble extends StatefulWidget {
   final ChatMessage message;
 
   const _MessageBubble({required this.message});
 
   @override
+  State<_MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<_MessageBubble>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _slideAnimation = Tween<double>(begin: 50, end: 0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isUser = message.isUser;
+    final isUser = widget.message.isUser;
     final theme = Theme.of(context);
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.8,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isUser ? 20 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 20),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(isUser ? _slideAnimation.value : -_slideAnimation.value, 0),
+          child: Opacity(
+            opacity: _fadeAnimation.value,
+            child: Transform.scale(
+              scale: _scaleAnimation.value,
+              alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+              child: child,
+            ),
           ),
-          gradient: isUser
-              ? LinearGradient(
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primaryContainer,
-                  ],
-                )
-              : null,
-          color: isUser
-              ? null
-              : theme.colorScheme.secondaryContainer.withOpacity(0.8),
-        ),
-        child: message.hasAudio
-            ? _AudioPlayerWidget(audioPath: message.audioPath!)
-            : Text(
-                message.content,
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 14,
-                  fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
-                  color: isUser
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSecondaryContainer,
-                ),
+        );
+      },
+      child: Align(
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.8,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(20),
+              topRight: const Radius.circular(20),
+              bottomLeft: Radius.circular(isUser ? 20 : 4),
+              bottomRight: Radius.circular(isUser ? 4 : 20),
+            ),
+            gradient: isUser
+                ? LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.primaryContainer,
+                    ],
+                  )
+                : null,
+            color: isUser
+                ? null
+                : theme.colorScheme.secondaryContainer.withOpacity(0.8),
+            boxShadow: [
+              BoxShadow(
+                color: (isUser
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.secondaryContainer)
+                    .withOpacity(0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
+            ],
+          ),
+          child: widget.message.hasAudio
+              ? _AudioPlayerWidget(audioPath: widget.message.audioPath!)
+              : Text(
+                  widget.message.content,
+                  style: TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 14,
+                    fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
+                    color: isUser
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.onSecondaryContainer,
+                  ),
+                ),
+        ),
       ),
     );
   }
@@ -438,7 +515,7 @@ class _AudioPlayerWidget extends StatelessWidget {
                     if (player.currentPath == audioPath) {
                       player.stop();
                     }
-                    File(audioPath).deleteSync();
+                    context.read<LLMService>().deleteAudioMessage(audioPath);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Recording deleted'),
