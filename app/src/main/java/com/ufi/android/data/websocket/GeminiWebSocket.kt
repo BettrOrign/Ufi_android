@@ -53,7 +53,7 @@ class GeminiWebSocket(
 ) {
     companion object {
         private const val WS_URL =
-            "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerate"
+            "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
         private const val TAG = "GeminiWS"
         private const val RECONNECT_DELAY_MS = 3000L
         private const val AUDIO_SAMPLE_RATE = 16000
@@ -115,9 +115,9 @@ class GeminiWebSocket(
         _turnComplete.value = false
         accumulatedAudio.clear()
 
-        val url = "$WS_URL?key=$apiKey"
         val request = Request.Builder()
-            .url(url)
+            .url(WS_URL)
+            .header("X-Goog-Api-Key", apiKey)
             .build()
 
         Log.d(TAG, "Connecting to Gemini WS...")
