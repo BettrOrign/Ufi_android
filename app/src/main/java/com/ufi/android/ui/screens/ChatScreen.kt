@@ -83,6 +83,7 @@ fun ChatScreen(
     val isThinking by viewModel.isThinking.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val audioLevel by viewModel.audioLevel.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     var showSettings by remember { mutableStateOf(false) }
     var textInput by remember { mutableStateOf("") }
@@ -179,14 +180,14 @@ fun ChatScreen(
 
         // Error banner
         AnimatedVisibility(
-            visible = connectionState == ConnectionState.ERROR,
+            visible = errorMessage != null,
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
             Text(
-                text = "Connection error. Check your API key.",
+                text = errorMessage ?: "",
                 color = ErrorRed,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -198,12 +199,13 @@ fun ChatScreen(
         // Chat area
         Box(modifier = Modifier.weight(1f)) {
             if (messages.isEmpty()) {
-                WelcomeView(
-                    connectionState = connectionState,
-                    isListening = isListening,
-                    onMicClick = { viewModel.toggleMic() },
-                    modifier = Modifier.align(Alignment.Center),
-                )
+                        WelcomeView(
+                            connectionState = connectionState,
+                            isListening = isListening,
+                            onMicClick = { viewModel.toggleMic() },
+                            hasApiKey = settings.hasApiKey,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
             } else {
                 LazyColumn(
                     state = listState,
@@ -325,6 +327,7 @@ private fun WelcomeView(
     connectionState: ConnectionState,
     isListening: Boolean,
     onMicClick: () -> Unit,
+    hasApiKey: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -363,25 +366,17 @@ private fun WelcomeView(
         Spacer(Modifier.height(6.dp))
 
         Text(
-            text = if (!isListening && connectionState == ConnectionState.DISCONNECTED) {
-                if (false) "Enter API key in settings" else "Tap the microphone or type to start."
-            } else {
-                "Tap the microphone or type to start."
+            text = when {
+                isListening -> "Listening..."
+                !hasApiKey -> "Enter your Gemini API key in Settings"
+                connectionState == ConnectionState.ERROR -> "Check your API key or internet"
+                connectionState == ConnectionState.CONNECTING -> "Connecting..."
+                else -> "Tap the microphone or type to start."
             },
             color = TextMuted,
             fontSize = 13.sp,
             textAlign = TextAlign.Center,
         )
-
-        if (connectionState != ConnectionState.CONNECTED) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Settings → add Gemini API key",
-                color = Accent.copy(alpha = 0.7f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-            )
-        }
     }
 }
 

@@ -72,6 +72,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _isThinking = MutableStateFlow(false)
     val isThinking: StateFlow<Boolean> = _isThinking.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     private val _settings = MutableStateFlow(loadSettings())
     val settings: StateFlow<Settings> = _settings.asStateFlow()
 
@@ -85,8 +88,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val s = _settings.value
         toolDispatcher.serverUrl = s.serverUrl
 
+        if (s.hasApiKey) connect()
+
         viewModelScope.launch {
             geminiWs.connectionState.collect { _connectionState.value = it }
+        }
+        viewModelScope.launch {
+            geminiWs.errorMessage.collect { _errorMessage.value = it }
         }
         viewModelScope.launch {
             geminiWs.incomingText.collect { text ->

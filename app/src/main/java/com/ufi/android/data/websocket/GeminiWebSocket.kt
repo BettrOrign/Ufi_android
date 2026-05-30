@@ -74,6 +74,9 @@ class GeminiWebSocket(
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     private val _incomingText = MutableStateFlow("")
     val incomingText: StateFlow<String> = _incomingText.asStateFlow()
 
@@ -122,6 +125,7 @@ class GeminiWebSocket(
             override fun onOpen(ws: WebSocket, response: Response) {
                 Log.d(TAG, "WebSocket opened")
                 _connectionState.value = ConnectionState.CONNECTED
+                _errorMessage.value = null
                 sendSetup(ws)
             }
 
@@ -141,7 +145,18 @@ class GeminiWebSocket(
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "WebSocket failure: ${t.message}", t)
+                val detail = when {
+                    t.message?.contains("Unable to resolve host") == true ->
+                        "Network: cannot reach Gemini API (no internet?)"
+                    t.message?.contains("SSL") == true ->
+                        "SSL error: ${t.message}"
+                    response != null ->
+                        "HTTP ${response.code}: ${response.message}"
+                    else ->
+                        t.message ?: "Unknown error"
+                }
+                Log.e(TAG, "WebSocket failure: $detail", t)
+                _errorMessage.value = detail
                 _connectionState.value = ConnectionState.ERROR
                 scheduleReconnect()
             }
