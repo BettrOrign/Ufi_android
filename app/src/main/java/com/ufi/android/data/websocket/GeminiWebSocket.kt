@@ -92,9 +92,6 @@ class GeminiWebSocket(
     private val _inputTranscription = MutableStateFlow("")
     val inputTranscription: StateFlow<String> = _inputTranscription.asStateFlow()
 
-    private val _outputTranscription = MutableStateFlow("")
-    val outputTranscription: StateFlow<String> = _outputTranscription.asStateFlow()
-
     private val accumulatedAudio = mutableListOf<GeminiAudioChunk>()
 
     fun configure(apiKey: String, systemPrompt: String, voiceName: String) {
@@ -116,7 +113,6 @@ class GeminiWebSocket(
         _incomingAudio.value = null
         _toolCalls.value = emptyList()
         _turnComplete.value = false
-        _outputTranscription.value = ""
         _inputTranscription.value = ""
         accumulatedAudio.clear()
 
@@ -177,7 +173,6 @@ class GeminiWebSocket(
         _incomingAudio.value = null
         _toolCalls.value = emptyList()
         _turnComplete.value = false
-        _outputTranscription.value = ""
         _inputTranscription.value = ""
         accumulatedAudio.clear()
     }
@@ -202,7 +197,7 @@ class GeminiWebSocket(
         setupInner.put("systemInstruction", systemInstruction)
 
         val generationConfig = JSONObject()
-        generationConfig.put("responseModalities", JSONArray(listOf("AUDIO", "TEXT")))
+        generationConfig.put("responseModalities", JSONArray(listOf("AUDIO")))
         val speechConfig = JSONObject()
         val voiceConfig = JSONObject()
         val prebuiltVoiceConfig = JSONObject()
@@ -347,7 +342,8 @@ class GeminiWebSocket(
         if (sc.has("outputTranscription")) {
             val ot = sc.getJSONObject("outputTranscription")
             if (ot.has("text")) {
-                _outputTranscription.value = ot.getString("text")
+                val text = ot.getString("text")
+                _incomingText.value = _incomingText.value + text
             }
         }
 

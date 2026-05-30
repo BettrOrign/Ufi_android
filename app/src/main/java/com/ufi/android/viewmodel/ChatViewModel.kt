@@ -106,15 +106,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         viewModelScope.launch {
-            geminiWs.outputTranscription.collect { text ->
-                if (text.isNotBlank()) {
-                    _isThinking.value = false
-                    accumulatedAssistantText = text
-                    displayAssistantText()
-                }
-            }
-        }
-        viewModelScope.launch {
             geminiWs.incomingAudio.collect { audio ->
                 if (audio != null) {
                     audioPlayer.enqueuePcm(audio.pcmData)
