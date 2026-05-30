@@ -75,6 +75,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _lastRawMessage = MutableStateFlow<String?>(null)
+    val lastRawMessage: StateFlow<String?> = _lastRawMessage.asStateFlow()
+
     private val _settings = MutableStateFlow(loadSettings())
     val settings: StateFlow<Settings> = _settings.asStateFlow()
 
@@ -95,6 +98,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             geminiWs.errorMessage.collect { _errorMessage.value = it }
+        }
+        viewModelScope.launch {
+            geminiWs.lastRawMessage.collect { _lastRawMessage.value = it }
         }
         viewModelScope.launch {
             geminiWs.incomingText.collect { text ->

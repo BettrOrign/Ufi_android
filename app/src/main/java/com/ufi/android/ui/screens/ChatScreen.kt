@@ -90,6 +90,7 @@ fun ChatScreen(
     val settings by viewModel.settings.collectAsState()
     val audioLevel by viewModel.audioLevel.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val lastRawMessage by viewModel.lastRawMessage.collectAsState()
 
     var showSettings by remember { mutableStateOf(false) }
     var textInput by remember { mutableStateOf("") }
@@ -329,6 +330,24 @@ fun ChatScreen(
             ) {
                 Icon(Icons.Default.Send, contentDescription = "Send", modifier = Modifier.size(18.dp))
             }
+        // Debug raw message
+        AnimatedVisibility(
+            visible = lastRawMessage != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Text(
+                text = lastRawMessage ?: "",
+                color = TextMuted,
+                fontSize = 8.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                maxLines = 3,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkBackground)
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            )
         }
     }
 

@@ -77,6 +77,9 @@ class GeminiWebSocket(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _lastRawMessage = MutableStateFlow<String?>(null)
+    val lastRawMessage: StateFlow<String?> = _lastRawMessage.asStateFlow()
+
     private val _incomingText = MutableStateFlow("")
     val incomingText: StateFlow<String> = _incomingText.asStateFlow()
 
@@ -294,10 +297,22 @@ class GeminiWebSocket(
 
     private fun handleMessage(text: String) {
         try {
+            _lastRawMessage.value = text.take(500)
             val json = JSONObject(text)
+
+            if (json.has("error")) {
+                val err = json.getJSONObject("error")
+                val code = err.optInt("code", 0)
+                val msg = err.optString("message", "Unknown error")
+                val status = err.optString("status", "")
+                _errorMessage.value = "Gemini API error ($code $status): $msg"
+                Log.e(TAG, "Gemini API error: $code $status - $msg")
+                return
+            }
 
             if (json.has("setupComplete")) {
                 Log.d(TAG, "Setup complete!")
+                _errorMessage.value = null
                 return
             }
 
@@ -314,6 +329,7 @@ class GeminiWebSocket(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Parse error: ${e.message}", e)
+            _errorMessage.value = "Parse error: ${e.message}"
         }
     }
 
