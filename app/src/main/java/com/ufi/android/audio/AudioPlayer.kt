@@ -58,11 +58,6 @@ class AudioPlayer(private val scope: CoroutineScope) {
                     .build()
             } else null
 
-            val sessionId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                AudioTrack.AUDIO_SESSION_ID_GENERATE
-            } else {
-                0
-            }
             audioTrack = AudioTrack(
                 attrs ?: AudioAttributes.Builder().build(),
                 AudioFormat.Builder()
@@ -72,7 +67,7 @@ class AudioPlayer(private val scope: CoroutineScope) {
                     .build(),
                 bufferSize,
                 AudioTrack.MODE_STREAM,
-                sessionId
+                0
             )
 
             try {
