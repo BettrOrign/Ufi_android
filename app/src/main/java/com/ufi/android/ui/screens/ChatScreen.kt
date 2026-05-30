@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -70,6 +71,7 @@ import com.ufi.android.ui.theme.TextPrimary
 import com.ufi.android.ui.theme.TextSecondary
 import com.ufi.android.viewmodel.ChatViewModel
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel,

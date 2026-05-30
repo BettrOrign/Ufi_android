@@ -17,7 +17,6 @@ import com.ufi.android.data.websocket.ToolCallInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.util.UUID
@@ -86,49 +85,46 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val s = _settings.value
         toolDispatcher.serverUrl = s.serverUrl
 
-        combine(
-            geminiWs.connectionState,
-            geminiWs.incomingText,
-            geminiWs.incomingAudio,
-            geminiWs.toolCalls,
-            geminiWs.turnComplete,
-            geminiWs.inputTranscription,
-        ) { state, text, audio, tools, turnComplete, transcription ->
-            Triple(text, audio, tools) to Triple(state, turnComplete, transcription)
-        }.let { flow ->
-            viewModelScope.launch {
-                flow.collect { (data, meta) ->
-                    val (text, audio, tools) = data
-                    val (state, turnComplete, transcription) = meta
-
-                    _connectionState.value = state
-
-                    if (state == ConnectionState.CONNECTED && transcription.isNotBlank()) {
-                        addMessage(ChatMessage(
-                            id = UUID.randomUUID().toString(),
-                            role = MessageRole.USER,
-                            text = transcription,
-                        ))
-                        _isThinking.value = true
-                    }
-
-                    if (text.isNotBlank()) {
-                        _isThinking.value = false
-                        updateAssistantText(text)
-                    }
-
-                    if (audio != null) {
-                        audioPlayer.enqueuePcm(audio.pcmData)
-                    }
-
-                    if (tools.isNotEmpty()) {
-                        _isThinking.value = true
-                        handleToolCalls(tools)
-                    }
-
-                    if (turnComplete) {
-                        finalizeAssistantTurn()
-                    }
+        viewModelScope.launch {
+            geminiWs.connectionState.collect { _connectionState.value = it }
+        }
+        viewModelScope.launch {
+            geminiWs.incomingText.collect { text ->
+                if (text.isNotBlank()) {
+                    _isThinking.value = false
+                    updateAssistantText(text)
+                }
+            }
+        }
+        viewModelScope.launch {
+            geminiWs.incomingAudio.collect { audio ->
+                if (audio != null) {
+                    audioPlayer.enqueuePcm(audio.pcmData)
+                }
+            }
+        }
+        viewModelScope.launch {
+            geminiWs.toolCalls.collect { tools ->
+                if (tools.isNotEmpty()) {
+                    _isThinking.value = true
+                    handleToolCalls(tools)
+                }
+            }
+        }
+        viewModelScope.launch {
+            geminiWs.turnComplete.collect { complete ->
+                if (complete) finalizeAssistantTurn()
+            }
+        }
+        viewModelScope.launch {
+            geminiWs.inputTranscription.collect { transcription ->
+                if (transcription.isNotBlank()) {
+                    addMessage(ChatMessage(
+                        id = UUID.randomUUID().toString(),
+                        role = MessageRole.USER,
+                        text = transcription,
+                    ))
+                    _isThinking.value = true
                 }
             }
         }
