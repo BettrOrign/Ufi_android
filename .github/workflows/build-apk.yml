@@ -24,23 +24,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build with Gradle
-        run: gradle assembleRelease
+      - name: Build debug APK
+        run: gradle assembleDebug
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: Ufi-Android-APK
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
-
-      - name: Sign APK (debug key for testing)
-        run: |
-          keytool -genkey -v -keystore debug.keystore -alias debug -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Ufi, OU=Android, O=Ufi, L=City, S=State, C=US"
-          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore debug.keystore -storepass android app/build/outputs/apk/release/app-release-unsigned.apk debug
-          mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/Ufi-Android.apk
-
-      - name: Upload signed APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Ufi-Android-Signed-APK
-          path: app/build/outputs/apk/release/Ufi-Android.apk
+          name: Ufi-Android-Debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
