@@ -1,5 +1,9 @@
 package com.ufi.android.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -49,6 +53,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -87,6 +93,22 @@ fun ChatScreen(
 
     var showSettings by remember { mutableStateOf(false) }
     var textInput by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) viewModel.toggleMic()
+    }
+    val handleMicClick: () -> Unit = {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            viewModel.toggleMic()
+        } else {
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
 
     val listState = rememberLazyListState()
 
@@ -202,7 +224,7 @@ fun ChatScreen(
                         WelcomeView(
                             connectionState = connectionState,
                             isListening = isListening,
-                            onMicClick = { viewModel.toggleMic() },
+                            onMicClick = handleMicClick,
                             hasApiKey = settings.hasApiKey,
                             modifier = Modifier.align(Alignment.Center),
                         )
@@ -244,7 +266,7 @@ fun ChatScreen(
             // Mic button
             val micBg = if (isListening) Accent.copy(alpha = 0.15f) else Color.Transparent
             IconButton(
-                onClick = { viewModel.toggleMic() },
+                onClick = handleMicClick,
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(8.dp))

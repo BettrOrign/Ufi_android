@@ -100,7 +100,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             geminiWs.incomingText.collect { text ->
                 if (text.isNotBlank()) {
                     _isThinking.value = false
-                    updateAssistantText(text)
+                    accumulatedAssistantText = text
+                    displayAssistantText()
+                }
+            }
+        }
+        viewModelScope.launch {
+            geminiWs.outputTranscription.collect { text ->
+                if (text.isNotBlank()) {
+                    _isThinking.value = false
+                    accumulatedAssistantText = text
+                    displayAssistantText()
                 }
             }
         }
@@ -218,10 +228,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _messages.value = current
     }
 
-    private fun updateAssistantText(newText: String) {
-        accumulatedAssistantText += newText
+    private fun displayAssistantText() {
         val current = _messages.value.toMutableList()
-
         if (currentAssistantMsgId == null) {
             val msgId = UUID.randomUUID().toString()
             currentAssistantMsgId = msgId
