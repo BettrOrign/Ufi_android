@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Ufi" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#191926</item>
+        <item name="android:navigationBarColor">#191926</item>
+        <item name="android:windowBackground">#FF191926</item>
+    </style>
+</resources>

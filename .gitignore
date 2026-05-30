@@ -1,32 +1,11 @@
-# Flutter
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-pubspec.lock
-build/
-
-# Android
-android/.gradle/
-android/build/
-android/local.properties
-android/app/.cxx/
-android/app/debug/
-android/app/profile/
-android/app/release/
-
-# IDE
-.idea/
-.vscode/
-.vs/
 *.iml
-*.iws
-*.ipr
-
-# OS
+.gradle
+/local.properties
+/.idea
 .DS_Store
-Thumbs.db
-
-# Environment
-.env
-lib/services/api_config.dart
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build
