@@ -330,6 +330,8 @@ fun ChatScreen(
             ) {
                 Icon(Icons.Default.Send, contentDescription = "Send", modifier = Modifier.size(18.dp))
             }
+        }
+
         // Debug raw message
         AnimatedVisibility(
             visible = lastRawMessage != null,
