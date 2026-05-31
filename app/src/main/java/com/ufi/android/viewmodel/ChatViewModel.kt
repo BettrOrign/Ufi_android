@@ -26,6 +26,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         private const val TAG = "ChatViewModel"
         private const val PREFS_NAME = "ufi_settings"
         private const val MAX_MESSAGES = 100
+        const val MODEL_NAME = "models/gemini-live-2.5-flash-preview"
     }
 
     private val prefs = application.getSharedPreferences(PREFS_NAME, 0)
@@ -149,7 +150,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val s = _settings.value
         if (!s.hasApiKey) return
 
-        geminiWs.configure(s.apiKey, s.systemPrompt, s.voiceName)
+        geminiWs.configure(s.apiKey, s.systemPrompt, s.voiceName, MODEL_NAME)
         geminiWs.connect()
         _connectionState.value = ConnectionState.CONNECTING
     }

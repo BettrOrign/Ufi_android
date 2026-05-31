@@ -70,6 +70,7 @@ class GeminiWebSocket(
     private var apiKey: String = ""
     private var systemPrompt: String = ""
     private var voiceName: String = "Charon"
+    private var modelName: String = "models/gemini-live-2.5-flash-preview"
 
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
@@ -97,10 +98,11 @@ class GeminiWebSocket(
 
     private val accumulatedAudio = mutableListOf<GeminiAudioChunk>()
 
-    fun configure(apiKey: String, systemPrompt: String, voiceName: String) {
+    fun configure(apiKey: String, systemPrompt: String, voiceName: String, modelName: String = "models/gemini-live-2.5-flash-preview") {
         this.apiKey = apiKey
         this.systemPrompt = systemPrompt
         this.voiceName = voiceName
+        this.modelName = modelName
     }
 
     fun connect() {
@@ -191,7 +193,7 @@ class GeminiWebSocket(
     private fun sendSetup(ws: WebSocket) {
         val setup = JSONObject()
         val setupInner = JSONObject()
-        setupInner.put("model", "models/gemini-2.5-flash-native-audio-latest")
+        setupInner.put("model", modelName)
 
         val systemInstruction = JSONObject()
         val parts = JSONArray()
@@ -209,6 +211,16 @@ class GeminiWebSocket(
         speechConfig.put("voiceConfig", voiceConfig)
         generationConfig.put("speechConfig", speechConfig)
         setupInner.put("generationConfig", generationConfig)
+
+        val realtimeInputConfig = JSONObject()
+        val automaticActivityDetection = JSONObject()
+        automaticActivityDetection.put("disabled", false)
+        automaticActivityDetection.put("startOfSpeechSensitivity", "START_SENSITIVITY_HIGH")
+        automaticActivityDetection.put("endOfSpeechSensitivity", "END_SENSITIVITY_HIGH")
+        automaticActivityDetection.put("prefixPaddingMs", 20)
+        automaticActivityDetection.put("silenceDurationMs", 150)
+        realtimeInputConfig.put("automaticActivityDetection", automaticActivityDetection)
+        setupInner.put("realtimeInputConfig", realtimeInputConfig)
 
         setupInner.put("tools", ToolDefinitions.getGeminiTools())
         setup.put("setup", setupInner)
@@ -246,12 +258,10 @@ class GeminiWebSocket(
 
         val realtimeInput = JSONObject()
         val realtimeInner = JSONObject()
-        val mediaChunks = JSONArray()
-        val chunk = JSONObject()
-        chunk.put("data", base64)
-        chunk.put("mimeType", "audio/pcm;rate=16000")
-        mediaChunks.put(chunk)
-        realtimeInner.put("mediaChunks", mediaChunks)
+        val audio = JSONObject()
+        audio.put("data", base64)
+        audio.put("mimeType", "audio/pcm;rate=16000")
+        realtimeInner.put("audio", audio)
         realtimeInput.put("realtimeInput", realtimeInner)
         msg.send(realtimeInput.toString())
     }
@@ -265,12 +275,10 @@ class GeminiWebSocket(
 
         val realtimeInput = JSONObject()
         val realtimeInner = JSONObject()
-        val mediaChunks = JSONArray()
-        val chunk = JSONObject()
-        chunk.put("data", base64)
-        chunk.put("mimeType", "audio/pcm;rate=16000")
-        mediaChunks.put(chunk)
-        realtimeInner.put("mediaChunks", mediaChunks)
+        val audio = JSONObject()
+        audio.put("data", base64)
+        audio.put("mimeType", "audio/pcm;rate=16000")
+        realtimeInner.put("audio", audio)
         realtimeInput.put("realtimeInput", realtimeInner)
         webSocket?.send(realtimeInput.toString())
     }
